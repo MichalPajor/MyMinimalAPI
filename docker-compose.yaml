@@ -1,0 +1,10 @@
+version: '3.8'
+services:
+  sqlServer:
+    image: "mcr.microsoft.com/mssql/server:2019-latest"
+    enviroment:
+     ACCEPT_EULA: "Y"
+     SA_PASSWORD: "mySecretPassword!"
+     MSSQL_PID: "Express"
+    ports:
+     - "1433:1433" 
