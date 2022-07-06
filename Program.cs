@@ -57,7 +57,7 @@ sqlConnBuilder.UserID = builder.Configuration["UserId"];
 sqlConnBuilder.Password = builder.Configuration["Password"];
 
 //Add db context
-builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlServer(sqlConnBuilder.ConnectionString))
+builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlServer(sqlConnBuilder.ConnectionString));
 //Register repository interface
 builder.Services.AddScoped<ICommandRepo, CommandRepo>();
 //Register mapper
