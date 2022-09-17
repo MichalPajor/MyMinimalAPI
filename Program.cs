@@ -7,6 +7,8 @@ using MyMinimalAPI.Models;
 using MyMinimalAPI.Middleware;
 using Microsoft.OpenApi.Models;
 using System.Reflection;
+using Swashbuckle.AspNetCore.Annotations;
+using Microsoft.AspNetCore.Mvc;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -27,34 +29,15 @@ builder.Services.AddSwaggerGen(options =>
 
         }
     });
-    options.AddSecurityDefinition("APIKEY", new OpenApiSecurityScheme()
-    {
-        In = ParameterLocation.Header,
-        Name = "X-API-KEY", //header with api key
-        Type = SecuritySchemeType.ApiKey,
-    });
-    options.AddSecurityRequirement(new OpenApiSecurityRequirement
-    {
-        {
-            new OpenApiSecurityScheme
-            {
-                Reference = new OpenApiReference
-                {
-                    Type = ReferenceType.SecurityScheme,
-                    Id = "APIKEY"
-                }
-            },
-            new string[] {}
-        }
-    });
+    options.EnableAnnotations();
 });
 
 
 //Build docker connection string with secrets
 var sqlConnBuilder = new SqlConnectionStringBuilder();
-sqlConnBuilder.ConnectionString = builder.Configuration.GetConnectionString("DockerConnection");
-sqlConnBuilder.UserID = builder.Configuration["UserId"];
-sqlConnBuilder.Password = builder.Configuration["Password"];
+sqlConnBuilder.ConnectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+//sqlConnBuilder.UserID = builder.Configuration["UserId"];
+//sqlConnBuilder.Password = builder.Configuration["Password"];
 
 //Add db context
 builder.Services.AddDbContext<AppDbContext>(options => options.UseSqlServer(sqlConnBuilder.ConnectionString));
@@ -80,15 +63,19 @@ app.UseMiddleware<ApiKeyMiddleware>();
 //***ENDPOINTS***
 
 //Get all commands
-app.MapGet("api/v1/commands",async (ICommandRepo repo, IMapper mapper) =>{
+app.MapGet("api/v1/commands", [SwaggerResponse(500,"Server error")] async (ICommandRepo repo, IMapper mapper) =>{
     var commands = await repo.GetAllCommandsAsync();
     if(commands.Count() == 0)
         return Results.NotFound();
     return Results.Ok(mapper.Map<IEnumerable<CommandReadDto>>(commands));
-});
+})
+.Produces<IEnumerable<CommandReadDto>>(StatusCodes.Status200OK)
+.Produces<ProblemDetails>(StatusCodes.Status400BadRequest)
+.WithMetadata(new SwaggerOperationAttribute("Get list of commands","Example description."))
+.WithTags("Getters");
 
 //Get command by ID
-app.MapGet("api/v1/commands/{id}", async (ICommandRepo repo, IMapper mapper, int id) =>{
+app.MapGet("api/v1/commands/{id}", [SwaggerResponse(500,"Server error")] async (ICommandRepo repo, IMapper mapper, int id) =>{
     var command = await repo.GetCommandByIdAsync(id);
     if(command == null)
         return Results.NotFound();
@@ -96,7 +83,7 @@ app.MapGet("api/v1/commands/{id}", async (ICommandRepo repo, IMapper mapper, int
 });
 
 //Create new command
-app.MapPost("api/v1/commands", async (ICommandRepo repo, IMapper mapper, CommandCreateDto command) =>{
+app.MapPost("api/v1/commands", [SwaggerResponse(500,"Server error")] async (ICommandRepo repo, IMapper mapper, CommandCreateDto command) =>{
     var commandModel = mapper.Map<Command>(command);
     await repo.CreateCommandAsync(commandModel);
     await repo.SaveChangesAsync();
@@ -107,7 +94,7 @@ app.MapPost("api/v1/commands", async (ICommandRepo repo, IMapper mapper, Command
 });
 
 //Update command
-app.MapPut("api/v1/commands/{id}", async(ICommandRepo repo, IMapper mapper, int id, CommandUpdateDto command) =>{
+app.MapPut("api/v1/commands/{id}", [SwaggerResponse(500,"Server error")] async(ICommandRepo repo, IMapper mapper, int id, CommandUpdateDto command) =>{
     var commandFromDb = await repo.GetCommandByIdAsync(id);
     if(commandFromDb == null)
         return Results.NotFound();
@@ -117,7 +104,7 @@ app.MapPut("api/v1/commands/{id}", async(ICommandRepo repo, IMapper mapper, int 
 } );
 
 //Delete command
-app.MapDelete("api/v1/commands/{id}", async(ICommandRepo repo, int id) => {
+app.MapDelete("api/v1/commands/{id}", [SwaggerResponse(500,"Server error")] async(ICommandRepo repo, int id) => {
     var commandFromDb = await repo.GetCommandByIdAsync(id);
     if(commandFromDb == null)
         return Results.NotFound();
